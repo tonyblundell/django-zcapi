@@ -1,7 +1,27 @@
 from django.core import serializers
 from django.db import models
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, HttpResponseNotFound
 import json
+
+
+class JsonResponse(HttpResponse):
+    def __init__(self, content='', *args, **kwargs):
+        kwargs['mimetype'] = 'application/json'
+        super(JsonResponse, self).__init__(*args, **kwargs)
+        if isinstance(content, models.Model):
+            content = to_dict(content)
+        elif isinstance(content, models.base.ModelBase):
+            content = [to_dict(o) for o in content.objects.all()]
+        self.content = json.dumps(content)
+
+
+def empty_response_on_404(f):
+    def wrapped(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Http404:
+            return HttpResponseNotFound()
+    return wrapped
 
 
 def get_model_or_404(app, model):
@@ -24,14 +44,3 @@ def to_dict(obj, parent=None):
             else:
                 d[field_name] = unicode(field)
     return d
-
-
-class JsonResponse(HttpResponse):
-    def __init__(self, content='', *args, **kwargs):
-        kwargs['mimetype'] = 'application/json'
-        super(JsonResponse, self).__init__(*args, **kwargs)
-        if isinstance(content, models.Model):
-            content = to_dict(content)
-        elif isinstance(content, models.base.ModelBase):
-            content = [to_dict(o) for o in content.objects.all()]
-        self.content = json.dumps(content)
