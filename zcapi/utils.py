@@ -34,8 +34,11 @@ def get_model_or_404(app, model):
 def to_dict(obj, parent=None):
     d = {}
     for field_name in obj._meta.get_all_field_names():
-        field = getattr(obj, field_name, None)
-        if field:
+        try:
+            field = getattr(obj, field_name)
+        except AttributeError:
+            pass
+        else:
             if isinstance(field, models.Manager):
                 if field.model != parent.__class__:
                     d[field_name] = [to_dict(o, obj) for o in field.all()]
