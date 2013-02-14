@@ -36,6 +36,7 @@ class ApiGetRequestTestCase(TestCase):
         """A GET request for a model list returns all items"""
         response = self.client.get('/api/testapp/actor/')
         data = sorted(json.loads(response.content))
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(data, self.actor_dicts)
 
     def test_get_item(self):
@@ -43,6 +44,7 @@ class ApiGetRequestTestCase(TestCase):
         url = '/api/testapp/actor/{0}/'.format(self.tom.id)
         response = self.client.get(url)
         data = json.loads(response.content)
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(data, self.tom_dict)
 
 
@@ -53,13 +55,27 @@ class ApiPostRequestTestCase(TestCase):
         url = '/api/testapp/actor/'
         post_data = {'name': 'Nicolas Cage'}
         response = self.client.post(url, post_data)
-        response_data = json.loads(response.content)
-        self.assertEqual(sorted(response_data.keys()), ['id', 'movies', 'name'])
-        self.assertEqual(response_data['name'], 'Nicolas Cage')
-        self.assertEqual(Actor.objects.count(), 1)
+        data = json.loads(response.content)
         obj = Actor.objects.get()
-        self.assertEqual(unicode(obj.id), response_data['id'])
-        self.assertEqual(obj.name, response_data['name'])
+        self.assertEqual(unicode(obj.id), data['id'])
+        self.assertEqual(obj.name, data['name'])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(sorted(data.keys()), ['id', 'movies', 'name'])
+        self.assertEqual(data['name'], 'Nicolas Cage')
+        self.assertEqual(Actor.objects.count(), 1)
+
+
+class ApiDeleteRequestTestCase(TestCase):
+
+    def test_delete(self):
+        """A DELETE request deletes the specified object"""
+        michael = Actor.objects.create(name='Michael J Fox')
+        christopher = Actor.objects.create(name='Christopher Lloyd')
+        url = '/api/testapp/actor/{0}/'.format(michael.id)
+        response = self.client.delete(url)
+        ids = [actor.id for actor in Actor.objects.all()]
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(ids, [christopher.id])
 
 
 class ApiInvalidRequestTestCase(TestCase):
@@ -70,7 +86,7 @@ class ApiInvalidRequestTestCase(TestCase):
         self.assertEqual(response.status_code, 404)
 
     def test_get_item_invalid(self):
-        """A GET request for a non-existant model returns a 404 response"""
+        """A GET request for a non-existant instance returns a 404 response"""
         response = self.client.get('/api/testapp/actor/1/')
         self.assertEqual(response.status_code, 404)
 
@@ -80,6 +96,16 @@ class ApiInvalidRequestTestCase(TestCase):
         post_data = {'not_name': 'Nicolas Cage'}
         with self.assertRaises(IntegrityError):
             self.client.post(url, post_data)
+        self.assertEqual(Actor.objects.count(), 0)
+
+    def test_delete_invalid(self):
+        """A DELETE request for a non-existant instance returns a 404 response"""
+        bruce = Actor.objects.create(name="Bruce Willis")
+        url = '/api/testapp/actor/{0}/'.format(bruce.id + 1)
+        response = self.client.delete(url)
+        ids = [actor.id for actor in Actor.objects.all()]
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(ids, [bruce.id])
 
 
 class ApiFieldTypeTestCase(TestCase):
@@ -96,12 +122,13 @@ class ApiFieldTypeTestCase(TestCase):
             positive_integer=1, positive_small_integer=1, slug='hello',
             small_integer=1, text='hello',  time=now, url='example.com')
         obj = MegaModel.objects.get(id=obj.id)
-        url = '/api/testapp/megamodel/{0}/'.format(obj.id)
-        response = self.client.get(url)
-        data = json.loads(response.content)
         fields = ('big_integer', 'boolean', 'char', 'comma_separated_integers', 'date',
             'date_time', 'decimal', 'email', 'file', 'file_path', 'floatx', 'image', 'integer',
             'ip_address', 'generic_ip_address', 'null_boolean', 'positive_integer',
             'positive_small_integer', 'slug', 'small_integer', 'text', 'time', 'url')
+        url = '/api/testapp/megamodel/{0}/'.format(obj.id)
+        response = self.client.get(url)
+        data = json.loads(response.content)
+        self.assertEqual(response.status_code, 200)
         for field in fields:
             self.assertEqual(data[field], unicode(getattr(obj, field)))
