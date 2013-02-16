@@ -163,7 +163,7 @@ class ApiInvalidRequestTestCase(TestCase):
         self.assertEqual(Actor.objects.count(), 0)
 
     def test_delete_invalid(self):
-        """A DELETE request for a non-existant instance returns a 404 response"""
+        """A DELETE request for an invalid instance returns a 404 response"""
         bruce = Actor.objects.create(name="Bruce Willis")
         url = reverse('zcapi_item', 
             kwargs={'app': 'testapp', 'model': 'actor', 'pk': bruce.id + 1})
@@ -183,14 +183,16 @@ class ApiFieldTypeTestCase(TestCase):
             comma_separated_integers='1,2,3', date=now, date_time=now,
             decimal=0.5, email='example@example.com', file='hello.txt',
             file_path='hello.txt', floatx=0.5, generic_ip_address='0.0.0.0', 
-            image='hello.jpg', integer=1, ip_address='0.0.0.0', null_boolean=True,
-            positive_integer=1, positive_small_integer=1, slug='hello',
-            small_integer=1, text='hello',  time=now, url='example.com')
+            image='hello.jpg', integer=1, ip_address='0.0.0.0',
+            null_boolean=True, positive_integer=1, positive_small_integer=1,
+            slug='hello', small_integer=1, text='hello', time=now,
+            url='example.com')
         obj = MegaModel.objects.get(id=obj.id)
-        fields = ('big_integer', 'boolean', 'char', 'comma_separated_integers', 'date',
-            'date_time', 'decimal', 'email', 'file', 'file_path', 'floatx', 'image', 'integer',
-            'ip_address', 'generic_ip_address', 'null_boolean', 'positive_integer',
-            'positive_small_integer', 'slug', 'small_integer', 'text', 'time', 'url')
+        fields = ('big_integer', 'boolean', 'char', 'comma_separated_integers',
+            'date', 'date_time', 'decimal', 'email', 'file', 'file_path',
+            'floatx', 'image', 'integer', 'ip_address', 'generic_ip_address',
+            'null_boolean', 'positive_integer', 'positive_small_integer',
+            'slug', 'small_integer', 'text', 'time', 'url')
         url = reverse('zcapi_item', 
             kwargs={'app': 'testapp', 'model': 'megamodel', 'pk': obj.id})
         response = self.client.get(url)
