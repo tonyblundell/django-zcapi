@@ -1,9 +1,67 @@
 from datetime import datetime
+from django.core.urlresolvers import reverse
 from django.db import IntegrityError
+from django.http import Http404, HttpResponse
 from django.test import TestCase
 from django.test.client import Client
 import json
 from testapp.models import Actor, Movie, Role, MegaModel
+from zcapi.utils import JsonResponse
+from zcapi.utils import empty_response_on_404, get_model_or_404, to_dict
+
+
+class JsonResponseTestCase(TestCase):
+
+    def test_mimetype(self):
+        """A JSONResponse has a JSON content type header"""
+        header = ('Content-Type', 'application/json')
+        response = JsonResponse()
+        self.assertEqual(response._headers['content-type'], header)
+
+    def test_list(self):
+        """A JSONResponse for a list contains valid JSON data"""
+        l = [{'a': '1', 'b': '2'}, {'z': '9', 'y': '8'}]
+        response = JsonResponse(l)
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data, l)
+
+    def test_dictionary(self):
+        """A JsonResponse for a dictionary contains valid JSON data"""
+        d = {'a': '1', 'b': '2'}
+        response = JsonResponse(d)
+        response_data = json.loads(response.content)
+        self.assertEqual(response_data, d)
+
+
+class EmptyResponseOn404TestCase(TestCase):
+
+    def test__404(self):
+        """An empty HttpResponse is returned when Http404 is raised"""
+        def f():
+            raise Http404
+        response = empty_response_on_404(f)()
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.content, '')
+
+    def test_200(self):
+        """A regular HttpResponse is passed through as normal"""
+        def f():
+            return HttpResponse('Hello')
+        response = empty_response_on_404(f)()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content, 'Hello')
+
+
+class GetModelOr404TestCase(TestCase):
+
+    def test_valid_model(self):
+        """A model object is returned for valid app and model names"""
+        m = get_model_or_404('testapp', 'actor')
+        self.assertEqual(m, Actor)
+
+    def test_invalid_model(self):        
+        with self.assertRaises(Http404):
+            m = get_model_or_404('invalid', 'invalid')    
 
 
 class ApiGetRequestTestCase(TestCase):
@@ -34,14 +92,17 @@ class ApiGetRequestTestCase(TestCase):
 
     def test_get_list(self):
         """A GET request for a model list returns all items"""
-        response = self.client.get('/api/testapp/actor/')
+        url = reverse('zcapi_list',
+            kwargs={'app': 'testapp', 'model': 'actor'})
+        response = self.client.get(url)
         data = sorted(json.loads(response.content))
         self.assertEqual(response.status_code, 200)
         self.assertEqual(data, self.actor_dicts)
 
     def test_get_item(self):
         """A GET request for a specific item returns the correct item"""
-        url = '/api/testapp/actor/{0}/'.format(self.tom.id)
+        url = reverse('zcapi_item',
+            kwargs={'app': 'testapp', 'model': 'actor', 'pk': self.tom.id})
         response = self.client.get(url)
         data = json.loads(response.content)
         self.assertEqual(response.status_code, 200)
@@ -52,7 +113,8 @@ class ApiPostRequestTestCase(TestCase):
 
     def test_post(self):
         """A POST request creates and returns a new object"""
-        url = '/api/testapp/actor/'
+        url = reverse('zcapi_list',
+            kwargs={'app': 'testapp', 'model': 'actor'})
         post_data = {'name': 'Nicolas Cage'}
         response = self.client.post(url, post_data)
         data = json.loads(response.content)
@@ -71,7 +133,8 @@ class ApiDeleteRequestTestCase(TestCase):
         """A DELETE request deletes the specified object"""
         michael = Actor.objects.create(name='Michael J Fox')
         christopher = Actor.objects.create(name='Christopher Lloyd')
-        url = '/api/testapp/actor/{0}/'.format(michael.id)
+        url = reverse('zcapi_item',
+            kwargs={'app': 'testapp', 'model': 'actor', 'pk': michael.id})
         response = self.client.delete(url)
         ids = [actor.id for actor in Actor.objects.all()]
         self.assertEqual(response.status_code, 200)
@@ -92,7 +155,8 @@ class ApiInvalidRequestTestCase(TestCase):
 
     def test_post_invalid(self):
         """An incomplete POST request causes an IntegrityError exception"""
-        url = '/api/testapp/actor/'
+        url = reverse('zcapi_list',
+            kwargs={'app': 'testapp', 'model': 'actor'})
         post_data = {'not_name': 'Nicolas Cage'}
         with self.assertRaises(IntegrityError):
             self.client.post(url, post_data)
@@ -101,7 +165,8 @@ class ApiInvalidRequestTestCase(TestCase):
     def test_delete_invalid(self):
         """A DELETE request for a non-existant instance returns a 404 response"""
         bruce = Actor.objects.create(name="Bruce Willis")
-        url = '/api/testapp/actor/{0}/'.format(bruce.id + 1)
+        url = reverse('zcapi_item', 
+            kwargs={'app': 'testapp', 'model': 'actor', 'pk': bruce.id + 1})
         response = self.client.delete(url)
         ids = [actor.id for actor in Actor.objects.all()]
         self.assertEqual(response.status_code, 404)
@@ -126,7 +191,8 @@ class ApiFieldTypeTestCase(TestCase):
             'date_time', 'decimal', 'email', 'file', 'file_path', 'floatx', 'image', 'integer',
             'ip_address', 'generic_ip_address', 'null_boolean', 'positive_integer',
             'positive_small_integer', 'slug', 'small_integer', 'text', 'time', 'url')
-        url = '/api/testapp/megamodel/{0}/'.format(obj.id)
+        url = reverse('zcapi_item', 
+            kwargs={'app': 'testapp', 'model': 'megamodel', 'pk': obj.id})
         response = self.client.get(url)
         data = json.loads(response.content)
         self.assertEqual(response.status_code, 200)
