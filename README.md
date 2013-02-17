@@ -41,8 +41,8 @@ All models in your project will be available through the API.
 Send a GET request to myapp/mymodel for a list of all instances,
 or to myapp/mymodel/1 for a specific instance (with PK=1 for this example).
 
-Send POST request to the list URL to create an instance, or to a particular
+Send a POST request to the list URL to create an instance, or to a particular
 instance's URL to update that instance.
 
-Send DELETE requests to the list URL to delete every instance, or to a 
+Send a DELETE request to the list URL to delete every instance, or to a 
 particular instance's URL to delete that instance.
