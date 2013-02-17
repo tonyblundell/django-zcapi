@@ -5,6 +5,13 @@ import json
 
 
 class JsonResponse(HttpResponse):
+    """
+        Subclass of HttpResponse which converts it's content
+        to JSON format when initiated.
+        If the content is a model, we return the result of its
+        objects.all queryset.
+    """
+
     def __init__(self, content='', *args, **kwargs):
         kwargs['mimetype'] = 'application/json'
         super(JsonResponse, self).__init__(*args, **kwargs)
@@ -16,6 +23,10 @@ class JsonResponse(HttpResponse):
 
 
 def empty_response_on_404(f):
+    """
+        View Wrapper that catches Http404 exceptions and returns
+        a response with an emtpy body.
+    """
     def wrapped(*args, **kwargs):
         try:
             return f(*args, **kwargs)
@@ -25,6 +36,10 @@ def empty_response_on_404(f):
 
 
 def get_model_or_404(app, model):
+    """
+        Accepts an app and model name. Returns the model class if it
+        exists, otherwise raises an Http404 exception.
+    """
     model = models.get_model(app, model)
     if not model:
         raise Http404
@@ -32,6 +47,12 @@ def get_model_or_404(app, model):
 
 
 def to_dict(obj, parent=None):
+    """
+        Utility function for converting a django object to a dictionary.
+        Converts regular fields to unicode strings.
+        Recursively calls relational fields.
+        Includes every instance in the field.all() queryset if the field has one.
+    """
     d = {}
     for field_name in obj._meta.get_all_field_names():
         try:
