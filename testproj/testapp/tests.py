@@ -64,6 +64,48 @@ class GetModelOr404TestCase(TestCase):
             m = get_model_or_404('invalid', 'invalid')    
 
 
+class ToDictTestCase(TestCase):
+
+    def test_relational_fields(self):
+        bruce = Actor.objects.create(name="Bruce Willis")
+        die_hard = Movie.objects.create(title="Die Hard")
+        role = Role.objects.create(actor=bruce, movie=die_hard)
+        bruce_dict = {'id': unicode(bruce.id),
+                           'name': bruce.name,
+                           'movies': [{'id': unicode(die_hard.id),
+                                       'title': die_hard.title}]}
+        die_hard_dict = {'id': unicode(die_hard.id),
+                              'title': die_hard.title,
+                              'actors': [{'id': unicode(bruce.id),
+                                          'name': bruce.name}]}
+        role_dict = {'id': unicode(role.id),
+                          'actor': bruce_dict,
+                          'movie': die_hard_dict}
+
+    def test_non_relational_fields(self):
+        now = datetime.now()
+        obj = MegaModel.objects.create(
+            big_integer=1, boolean=True, char='Hello',
+            comma_separated_integers='1,2,3', date=now, date_time=now,
+            decimal=0.5, email='example@example.com', file='hello.txt',
+            file_path='hello.txt', floatx=0.5, generic_ip_address='0.0.0.0', 
+            image='hello.jpg', integer=1, ip_address='0.0.0.0',
+            null_boolean=True, positive_integer=1, positive_small_integer=1,
+            slug='hello', small_integer=1, text='hello', time=now,
+            url='example.com')
+        obj = MegaModel.objects.get(id=obj.id)
+        fields = ('big_integer', 'boolean', 'char', 'comma_separated_integers',
+            'date', 'date_time', 'decimal', 'email', 'file', 'file_path',
+            'floatx', 'id', 'image', 'integer', 'ip_address',
+            'generic_ip_address', 'null_boolean', 'positive_integer',
+            'positive_small_integer', 'slug', 'small_integer', 'text', 'time',
+            'url')
+        d = to_dict(obj)
+        self.assertEqual(len(d), len(fields))
+        for field in fields:
+            self.assertEqual(d[field], unicode(getattr(obj, field)))
+
+
 class ApiGetRequestTestCase(TestCase):
 
     def setUp(self):
@@ -190,13 +232,15 @@ class ApiFieldTypeTestCase(TestCase):
         obj = MegaModel.objects.get(id=obj.id)
         fields = ('big_integer', 'boolean', 'char', 'comma_separated_integers',
             'date', 'date_time', 'decimal', 'email', 'file', 'file_path',
-            'floatx', 'image', 'integer', 'ip_address', 'generic_ip_address',
-            'null_boolean', 'positive_integer', 'positive_small_integer',
-            'slug', 'small_integer', 'text', 'time', 'url')
+            'floatx', 'id', 'image', 'integer', 'ip_address',
+            'generic_ip_address', 'null_boolean', 'positive_integer',
+            'positive_small_integer', 'slug', 'small_integer', 'text', 'time',
+            'url')
         url = reverse('zcapi_item', 
             kwargs={'app': 'testapp', 'model': 'megamodel', 'pk': obj.id})
         response = self.client.get(url)
         data = json.loads(response.content)
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(data), len(fields))
         for field in fields:
             self.assertEqual(data[field], unicode(getattr(obj, field)))
