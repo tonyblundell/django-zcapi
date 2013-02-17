@@ -67,6 +67,7 @@ class GetModelOr404TestCase(TestCase):
 class ToDictTestCase(TestCase):
 
     def test_relational_fields(self):
+        """Relation field types are successfully converted to a dict"""
         bruce = Actor.objects.create(name="Bruce Willis")
         die_hard = Movie.objects.create(title="Die Hard")
         role = Role.objects.create(actor=bruce, movie=die_hard)
@@ -81,8 +82,11 @@ class ToDictTestCase(TestCase):
         role_dict = {'id': unicode(role.id),
                           'actor': bruce_dict,
                           'movie': die_hard_dict}
+        d = to_dict(role)                        
+        self.assertEqual(d, role_dict)
 
     def test_non_relational_fields(self):
+        """All non-relational field types are successfully converted to dict"""
         now = datetime.now()
         obj = MegaModel.objects.create(
             big_integer=1, boolean=True, char='Hello',
