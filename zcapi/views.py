@@ -9,13 +9,14 @@ def api(request, app, model, pk=None):
     """
         The main API view.
         A model (including app) must be specified.
-        An the optional instance is not specified (by PK), we operate on
-        the models entire collection.
+        An instance can optionally be specified (by PK).
+        If the instance is not specified, we operate on the model's 
+        entire collection.
         Accepts GET, POST (for create and update) and DELETE requests.
         Returns in JSON format.
     """
 
-    # Return a 404 if the model or instance don't exist
+    # Return a 404 if the model or instance doesn't exist
     model = get_model_or_404(app, model)
     obj = get_object_or_404(model, pk=pk) if pk else None
 
